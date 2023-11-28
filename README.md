@@ -43,7 +43,7 @@ docker build -t tkinter-app .
 ```
 最後に、Dockerコンテナを実行します。ゲームが起動します。
 ```bash
-docker run -d -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=unix$DISPLAY tkinter-app
+docker run -d -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=host.docker.internal:0 tkinter-app
 ```
 
 # tkinterのインストール方法(MacOS)

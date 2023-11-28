@@ -1,5 +1,5 @@
-import random
-import time
+from random import randrange
+from time import sleep
 import tkinter
 
 
@@ -15,12 +15,15 @@ class Snowball:
         self.my_y_position = 420  # 黄色玉(自分)のY座標
         self._MY_COLOR = "gold"  # 黄色玉(自分)の色
         self._MY_NAME = "me"  # 黄色玉(自分)の名前
-        self._ENEMY_NMAE = "enemy"  # 白玉(敵)の名前
-        self._ENEMY_COLOR = "white" # 白玉(敵)の色
+        self._ENEMY_NAME = "enemy"  # 白玉(敵)の名前
+        self._ENEMY_COLOR = "white"  # 白玉(敵)の色
+        self._MAXIMUM_ENEMIES = 20  # 白玉(敵)の最大数
 
-        self.generate_enemy()  # 敵の生成
+        self.enemy_information = []  # 敵の情報
 
-    def repaint_object(self, name,color, x_position, move_x_amount, y_position, move_y_amount):
+    def repaint_object(
+        self, name, color, x_position, move_x_amount, y_position, move_y_amount
+    ):
         """
         黄色玉(自分)の描画
         :return:
@@ -41,13 +44,14 @@ class Snowball:
         :return:
         """
         self.repaint_object(
-            self._MY_NAME,
-            self._MY_COLOR,
-            self.my_x_position,
-            self._OBJECT_SIZE,
-            self.my_y_position,
-            self._OBJECT_SIZE,
-                )
+            name=self._MY_NAME,
+            color=self._MY_COLOR,
+            x_position=self.my_x_position,
+            move_x_amount=self._OBJECT_SIZE,
+            y_position=self.my_y_position,
+            move_y_amount=self._OBJECT_SIZE,
+        )
+        self.canvas.update()
 
     def input_key(self, event):
         """
@@ -69,30 +73,31 @@ class Snowball:
         if direction == "Left":
             if self.my_x_position > 0:
                 self.my_x_position -= self._OBJECT_SIZE
-                self.repaint_object()
+                self.paint_me()
         elif direction == "Right":
-            if self.my_x_position < WINDOW_SIZE[0] - 10:
+            if self.my_x_position < self.x_window_size - self._OBJECT_SIZE:
                 self.my_x_position += self._OBJECT_SIZE
-                self.repaint_object()
+                self.paint_me()
 
-    def is_hitted(self):
+    def is_hit(self):
         """
         黄色玉が白玉に敵に当たったかどうか
         :return:
         """
-        for i in range(c_max):
-            if bl.me_x_position == enemy_x[i]:
-                if bl.my_y_position == enemy_y[i]:
-                    gameover_flg = True
-                    return gameover_flg
+        for enemy in self.enemy_information:
+            if self.my_x_position == enemy["position_x"]:
+                if self.my_y_position == enemy["position_y"]:
+                    return True
+        return False
 
     def is_arrived_in_window_bottom(self):
         """
         白玉が画面下に敵が到達したかどうか
         :return:
         """
-        if min(enemy_y) >= self.y_window_size:
-            return True
+        for enemy in self.enemy_information:
+            if enemy["position_y"] >= self.y_window_size:
+                return True
         return False
 
     def generate_enemy(self):  # 敵ブロックの生成
@@ -103,60 +108,56 @@ class Snowball:
         self.canvas.create_text(
             320, 200, fill="white", tag="ready", text="READY?", font=("FixedSys", 50)
         )
-        global c, c_max, enemy_x, enemy_flg
-        c_max = int(20**v)  # 敵の上限数
-        # 出現位置
-        enemy_box = [0, 0]  # X座標とY座標
-        enemy_box[0] = random.randrange(0, WINDOW_SIZE[0], 10)
-        if c < c_max:  # 座標取得
-            enemy_x.append(enemy_box[0])
-            enemy_y.append(enemy_box[1])
-        if c < c_max:
-            # タグ付け
-            enemy_tag = "enemy" + str(c)
-            # ブロック生成
-            enemy_bl = Snowball(enemy_box[0], enemy_box[1], "white", enemy_tag)
-            enemy_bl.repaint_object()
-
-            c += 1
-        if c == c_max:
-            enemy_flg = True
-
+        for enemy_number in range(self._MAXIMUM_ENEMIES):
+            self.enemy_information.append(
+                {
+                    "position_x": randrange(
+                        0, self.x_window_size, self._OBJECT_SIZE
+                    ),  # 出現位置x
+                    "position_y": 0,  # 出現位置y
+                    "color": self._ENEMY_COLOR,  # 色
+                    "name": self._ENEMY_NAME + str(enemy_number),  # 名前
+                }
+            )
+        for enemy in self.enemy_information:
+            sleep(0.05)
+            self.repaint_object(
+                name=enemy["name"],
+                color=enemy["color"],
+                x_position=enemy["position_x"],
+                move_x_amount=self._OBJECT_SIZE,
+                y_position=enemy["position_y"],
+                move_y_amount=self._OBJECT_SIZE,
+            )
+            self.canvas.update()
         self.canvas.delete("ready")
 
-    def enemy_fall(self):
+    def fall(self):
         """
         白玉(敵)の落下処理
         :return:
         """
-        global enemy_x, enemy_y
-        time.sleep(REFRESH / 1000)
-        for i in range(c_max):
-            enemy_y[i] += random.randrange(0, 30, 10)
-            enemy_bl = Snowball(enemy_x[i], enemy_y[i], "white", "enemy" + str(i))
-            enemy_bl.repaint_object()
-            ht.is_hitted()
+        for enemy in self.enemy_information:
+            enemy["position_y"] += self._OBJECT_SIZE
+            self.repaint_object(
+                name=enemy["name"],
+                color=enemy["color"],
+                x_position=enemy["position_x"],
+                move_x_amount=self._OBJECT_SIZE,
+                y_position=enemy["position_y"],
+                move_y_amount=self._OBJECT_SIZE,
+            )
+        self.canvas.update()
 
     def reset_game(self):
         """
         ゲームの初期化
         :return:
         """
-        self.canvas.delete("enemy")
-        self.canvas.delete("me")
-        self.canvas.delete("gameover")
-        self.canvas.delete("completed")
-        enemy_flg = False
-        under_flg = False
-        enemy_y = []
-        enemy_x = []
-        c = 0
-        v += 0.5
-        if rotation == 2:
-            welldone_flg = True
-            gameover_flg = True
-            gameover()
-        rotation += 1
+        for enemy in self.enemy_information:
+            self.canvas.delete(enemy["name"])
+        self.enemy_information = []
+        self._MAXIMUM_ENEMIES *= 2
 
     def game_over(self):  # ゲームオーバー処理
         """
@@ -183,20 +184,6 @@ class Snowball:
         )
 
 
-# 当たり判定フラグ
-hit_flg = False
-under_flg = False
-# ブロック
-x_posi = box[0]
-
-
-c = 0  # 敵の初期値
-v = 1
-enemy_x = []
-enemy_y = []
-enemy_flg = False
-
-
 class GameManager:
     """
     ゲームの管理/運用を行うクラス
@@ -208,7 +195,7 @@ class GameManager:
             640,
             480,
         )  # ウィンドウサイズ
-        REFRESH = 30  # 更新頻度(ミリ秒)
+        self.REFRESH = 30  # 更新頻度(ミリ秒)
 
         self.window = tkinter.Tk()  # window の初期化
         self.window.resizable(width=False, height=False)  # window のサイズを変更できないようにする
@@ -221,30 +208,42 @@ class GameManager:
         self.canvas.pack()  # canvasをウィンドウに貼り付ける
 
         self.snowball = Snowball(self.canvas, WINDOW_SIZE)
-        self.game_status = 0  #  0:ゲーム中 1:ゲームオーバー 2:ゲームクリア
+        self.game_status = 0  #  1:スタンバイ中、2:ゲーム中 3:ゲームオーバー 4:ゲームクリア
         self.number_of_games = 0  # ゲームの回数
 
         self.window.bind(
             "<Key>", self.snowball.input_key
         )  # キーボードのキーが押されたらkey_move関数をコール
-        self.window.after(REFRESH, self.loop)  # 30ミリ秒後にloop関数をコール
 
     def start(self):
+        self.loop()
         self.window.mainloop()
 
     def loop(self):
-        if self.game_status == 0:  # ゲーム中
-            self.snowball.repaint_object()
-            self.snowball.enemy_fall()
-            if self.snowball.is_hitted():
-                self.game_status = 1
-                return
-            self.snowball.is_arrived_in_window_bottom()
-
-        if self.game_status == 1:  # ゲームオーバー
+        if self.game_status == 0:  # 初期状態
+            self.game_status = 1
+            self.window.after(self.REFRESH, self.loop)  # 30ミリ秒後にloop関数をコール
+            return
+        if self.game_status == 1:  # スタンバイ中
+            self.snowball.paint_me()
+            self.snowball.generate_enemy()
+            self.game_status = 2
+        if self.game_status == 2:  # ゲーム中
+            self.snowball.fall()
+            if self.snowball.is_hit():
+                self.game_status = 3
+            if self.snowball.is_arrived_in_window_bottom():
+                self.number_of_games += 1
+                self.snowball.reset_game()
+                if self.number_of_games < 3:
+                    self.snowball.generate_enemy()
+            if self.number_of_games == 3:
+                self.game_status = 4
+        if self.game_status == 3:  # ゲームオーバー
             self.snowball.game_over()
-        if self.game_status == 2:  # ゲームクリア
+        if self.game_status == 4:  # ゲームクリア
             self.snowball.game_completed()
+        self.window.after(self.REFRESH, self.loop)  # 30ミリ秒後にloop関数をコール
 
 
 if __name__ == "__main__":
