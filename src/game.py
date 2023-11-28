@@ -1,162 +1,251 @@
-import random
+from random import randrange
+from time import sleep
 import tkinter
-import time
 
-# 定数
-WINDOW_SIZE = (640, 480)
-BOX_SIZE = 10
-REFRESH = 30
 
-#主人公ブロック
-##初期座標
-box = [320,420]#左端、上端
-##ブロックサイズ
-box_SIZE = 10
-##タグ
-box_TAG = "Block"
-##動作回数
-rotation = 0
-#ゲームオーバーフラグ
-gameover_flg = False
-welldone_flg = False
-#当たり判定フラグ
-hit_flg = False
-under_flg = False
-#ブロック
-x_posi=box[0]
-class Block:
-    global box,WINDOW_SIZE,hit_flg,x_posi,y_posi
-    def __init__(self, left, up, color, tag):
-        self.x_position = left
-        self.y_position = up
-        self.color = color
-        self.tag =  tag
-    def block_reset(self):#初期化
-        box[0] = self.x_position
-        box[1] = self.y_position
-    def repaint_box(self):
-        canvas.delete(self.tag)
-        canvas.create_oval(self.x_position + box_SIZE, self.y_position, self.x_position, self.y_position + box_SIZE, fill=self.color, tag=self.tag)
-    def move(self,direction):
+class Snowball:
+    def __init__(self, canvas, window_size):
+        # ゲーム内の設定
+        self.canvas = canvas  # canvasの情報
+        self.x_window_size = window_size[0]  # ウィンドウの横幅
+        self.y_window_size = window_size[1]  # ウィンドウの縦幅
+
+        self._OBJECT_SIZE = 10  # 玉のサイズ
+        self.my_x_position = 320  # 黄色玉(自分)のX座標
+        self.my_y_position = 420  # 黄色玉(自分)のY座標
+        self._MY_COLOR = "gold"  # 黄色玉(自分)の色
+        self._MY_NAME = "me"  # 黄色玉(自分)の名前
+        self._ENEMY_NAME = "enemy"  # 白玉(敵)の名前
+        self._ENEMY_COLOR = "white"  # 白玉(敵)の色
+        self._MAXIMUM_ENEMIES = 20  # 白玉(敵)の最大数
+
+        self.enemy_information = []  # 敵の情報
+
+    def repaint_object(
+        self, name, color, x_position, move_x_amount, y_position, move_y_amount
+    ):
+        """
+        黄色玉(自分)の描画
+        :return:
+        """
+        self.canvas.delete(name)
+        self.canvas.create_oval(
+            x_position + move_x_amount,
+            y_position,
+            x_position,
+            y_position + move_y_amount,
+            fill=color,
+            tag=name,
+        )
+
+    def paint_me(self):
+        """
+        黄色玉(自分)の描画
+        :return:
+        """
+        self.repaint_object(
+            name=self._MY_NAME,
+            color=self._MY_COLOR,
+            x_position=self.my_x_position,
+            move_x_amount=self._OBJECT_SIZE,
+            y_position=self.my_y_position,
+            move_y_amount=self._OBJECT_SIZE,
+        )
+        self.canvas.update()
+
+    def input_key(self, event):
+        """
+        キーボードが押された時
+        :param event:
+        :return:
+        """
+        if event.keysym == "Left":
+            self.move_left_right(direction="Left")
+        elif event.keysym == "Right":
+            self.move_left_right(direction="Right")
+
+    def move_left_right(self, direction):
+        """
+        黄色玉(自分)の移動処理
+        :param direction:
+        :return:
+        """
         if direction == "Left":
-            if self.x_position > 0:
-                self.x_position -= box_SIZE
-                bl.repaint_box()
-                return self.x_position
-        else:
-            if self.x_position<WINDOW_SIZE[0]-10:
-                self.x_position += box_SIZE
-                bl.repaint_box()
-class hit(Block):#当たり判定処理
-    global box, hit_flg, enemy_x, enemy_y
+            if self.my_x_position > 0:
+                self.my_x_position -= self._OBJECT_SIZE
+                self.paint_me()
+        elif direction == "Right":
+            if self.my_x_position < self.x_window_size - self._OBJECT_SIZE:
+                self.my_x_position += self._OBJECT_SIZE
+                self.paint_me()
+
+    def is_hit(self):
+        """
+        黄色玉が白玉に敵に当たったかどうか
+        :return:
+        """
+        for enemy in self.enemy_information:
+            if self.my_x_position == enemy["position_x"]:
+                if self.my_y_position == enemy["position_y"]:
+                    return True
+        return False
+
+    def is_arrived_in_window_bottom(self):
+        """
+        白玉が画面下に敵が到達したかどうか
+        :return:
+        """
+        for enemy in self.enemy_information:
+            if enemy["position_y"] >= self.y_window_size:
+                return True
+        return False
+
+    def generate_enemy(self):  # 敵ブロックの生成
+        """
+        白玉(敵)の生成
+        :return:
+        """
+        self.canvas.create_text(
+            320, 200, fill="white", tag="ready", text="READY?", font=("FixedSys", 50)
+        )
+        for enemy_number in range(self._MAXIMUM_ENEMIES):
+            self.enemy_information.append(
+                {
+                    "position_x": randrange(
+                        0, self.x_window_size, self._OBJECT_SIZE
+                    ),  # 出現位置x
+                    "position_y": 0,  # 出現位置y
+                    "color": self._ENEMY_COLOR,  # 色
+                    "name": self._ENEMY_NAME + str(enemy_number),  # 名前
+                }
+            )
+        for enemy in self.enemy_information:
+            sleep(0.05)
+            self.repaint_object(
+                name=enemy["name"],
+                color=enemy["color"],
+                x_position=enemy["position_x"],
+                move_x_amount=self._OBJECT_SIZE,
+                y_position=enemy["position_y"],
+                move_y_amount=self._OBJECT_SIZE,
+            )
+            self.canvas.update()
+        self.canvas.delete("ready")
+
+    def fall(self):
+        """
+        白玉(敵)の落下処理
+        :return:
+        """
+        for enemy in self.enemy_information:
+            enemy["position_y"] += self._OBJECT_SIZE
+            self.repaint_object(
+                name=enemy["name"],
+                color=enemy["color"],
+                x_position=enemy["position_x"],
+                move_x_amount=self._OBJECT_SIZE,
+                y_position=enemy["position_y"],
+                move_y_amount=self._OBJECT_SIZE,
+            )
+        self.canvas.update()
+
+    def reset_game(self):
+        """
+        ゲームの初期化
+        :return:
+        """
+        for enemy in self.enemy_information:
+            self.canvas.delete(enemy["name"])
+        self.enemy_information = []
+        self._MAXIMUM_ENEMIES *= 2
+
+    def game_over(self):  # ゲームオーバー処理
+        """
+        ゲームオーバー処理
+        :return:
+        """
+        self.canvas.create_text(
+            320,
+            200,
+            fill="black",
+            tag="gameover",
+            text="GAME OVER",
+            font=("FixedSys", 50),
+        )
+
+    def game_completed(self):
+        self.canvas.create_text(
+            320,
+            200,
+            fill="black",
+            tag="completed",
+            text="Congratulations!",
+            font=("FixedSys", 50),
+        )
+
+
+class GameManager:
+    """
+    ゲームの管理/運用を行うクラス
+    """
+
     def __init__(self):
-        self.left = 0
-        self.right = WINDOW_SIZE[0]
-        self.up = 0
-        self.down = WINDOW_SIZE[1]
-    def hit(self):
-        global hit_flg,gameover_flg
-        for i in range(c_max):
-            if bl.x_position == enemy_x[i]:
-                if bl.y_position == enemy_y[i]:
-                    gameover_flg = True
-                    return gameover_flg
-    def under(self):
-        global under_flg, WINDOW_SIZE
-        if min(enemy_y) >= WINDOW_SIZE[1]:
-            under_flg = True
-        return under_flg
-bl = Block(box[0],box[1],"gold",box_TAG)
-ht = hit()
+        # windowの設定
+        WINDOW_SIZE = (
+            640,
+            480,
+        )  # ウィンドウサイズ
+        self.REFRESH = 30  # 更新頻度(ミリ秒)
 
-c = 0#敵の初期値
-v = 1
-enemy_x=[]
-enemy_y=[]
-enemy_flg = False
-def enemy():#敵ブロックの生成
-    global c,c_max,enemy_x,enemy_flg
-    c_max = int(20**v)#敵の上限数
-    #出現位置
-    enemy_box = [0,0]#X座標とY座標
-    enemy_box[0] = random.randrange(0,WINDOW_SIZE[0],10)
-    if c < c_max:#座標取得
-        enemy_x.append(enemy_box[0])
-        enemy_y.append(enemy_box[1])
-    if c < c_max:
-        #タグ付け
-        enemy_tag = "enemy" + str(c)
-        #ブロック生成
-        enemy_bl = Block(enemy_box[0],enemy_box[1],"white", enemy_tag)
-        enemy_bl.repaint_box()
-        canvas.create_text(320, 200, fill="white", tag="ready", text='READY?', font =("FixedSys", 50))
+        self.window = tkinter.Tk()  # window の初期化
+        self.window.resizable(width=False, height=False)  # window のサイズを変更できないようにする
+        self.canvas = tkinter.Canvas(
+            self.window, width=WINDOW_SIZE[0], height=WINDOW_SIZE[1]
+        )  # windows上に絵を書く場所を作る
+        self.canvas.create_rectangle(
+            0, 0, WINDOW_SIZE[0], WINDOW_SIZE[1], fill="#FF1493"
+        )  # windows上にWINDOW_SIZE[0]xWINDOW_SIZE[1]の黒い四角を書く
+        self.canvas.pack()  # canvasをウィンドウに貼り付ける
 
-        c += 1
-    if c == c_max:
-        enemy_flg = True
+        self.snowball = Snowball(self.canvas, WINDOW_SIZE)
+        self.game_status = 0  #  1:スタンバイ中、2:ゲーム中 3:ゲームオーバー 4:ゲームクリア
+        self.number_of_games = 0  # ゲームの回数
 
-def enemy_fall():#落下処理
-    global enemy_x,enemy_y
-    time.sleep(REFRESH/1000)
-    for i in range(c_max):
-        enemy_y[i] += random.randrange(0,30,10)
-        enemy_bl = Block(enemy_x[i],enemy_y[i],"white", "enemy"+str(i))
-        enemy_bl.repaint_box()
-        ht.hit()
+        self.window.bind(
+            "<Key>", self.snowball.input_key
+        )  # キーボードのキーが押されたらkey_move関数をコール
 
-def gameover():#ゲームオーバー処理
-    if gameover_flg == True:
-        if welldone_flg == True:
-            canvas.delete("ready")
-            canvas.create_text(320, 200, fill="black", tag="WELLDONE", text='Congratulations!', font =("FixedSys", 50))
-        else:
-            canvas.delete("ready")
-            canvas.create_text(320, 200, fill="black", tag="GAMEOVER", text='GAME OVER', font =("FixedSys", 50))
+    def start(self):
+        self.loop()
+        self.window.mainloop()
 
-window = tkinter.Tk() # window の初期化
-window.resizable(width=False, height=False) # window のサイズを変更できないように
-canvas = tkinter.Canvas(window, width=WINDOW_SIZE[0], height=WINDOW_SIZE[1]) # windows上に絵を書く場所を作る
-canvas.create_rectangle(0, 0, WINDOW_SIZE[0], WINDOW_SIZE[1], fill="#FF1493") # windows上にWINDOW_SIZE[0]xWINDOW_SIZE[1]の黒い四角を書く
-canvas.pack()
+    def loop(self):
+        if self.game_status == 0:  # 初期状態
+            self.game_status = 1
+            self.window.after(self.REFRESH, self.loop)  # 30ミリ秒後にloop関数をコール
+            return
+        if self.game_status == 1:  # スタンバイ中
+            self.snowball.paint_me()
+            self.snowball.generate_enemy()
+            self.game_status = 2
+        if self.game_status == 2:  # ゲーム中
+            self.snowball.fall()
+            if self.snowball.is_hit():
+                self.game_status = 3
+            if self.snowball.is_arrived_in_window_bottom():
+                self.number_of_games += 1
+                self.snowball.reset_game()
+                if self.number_of_games < 3:
+                    self.snowball.generate_enemy()
+            if self.number_of_games == 3:
+                self.game_status = 4
+        if self.game_status == 3:  # ゲームオーバー
+            self.snowball.game_over()
+        if self.game_status == 4:  # ゲームクリア
+            self.snowball.game_completed()
+        self.window.after(self.REFRESH, self.loop)  # 30ミリ秒後にloop関数をコール
 
-def reset():#初期化
-    global enemy_flg, under_flg, v, c, enemy_y, enemy_x, rotation, gameover_flg,welldone_flg
-    enemy_flg = False
-    under_flg = False
-    enemy_y = []
-    enemy_x = []
-    c = 0
-    v += 0.5
-    if rotation == 2:
-        welldone_flg = True
-        gameover_flg = True
-        gameover()
-    rotation += 1
 
-def game_loop():#ゲームマネージメント
-    if gameover_flg == False:
-        bl.repaint_box()
-        enemy()
-        ht.under()
-        if enemy_flg == True:
-            canvas.delete("ready")
-            enemy_fall()
-        if under_flg == True:
-            reset()
-        if hit_flg == True:
-            gameover()
-        window.after(REFRESH,game_loop)
-    else:
-        gameover()
-
-# キーボードが押された時
-def key_move(event):
-    if event.keysym == "Left":
-        bl.move(direction="Left")
-    elif event.keysym == "Right":
-        bl.move(direction="Right")
-# イベントの関連付け
-window.bind("<Key>", key_move) # キーボードのキーが押されたら
-# 実行
-game_loop() # ゲームの計算を一定のタイミングで行う
-window.mainloop() # 画面表示を続ける
+if __name__ == "__main__":
+    game = GameManager()
+    game.start()
